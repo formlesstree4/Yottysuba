@@ -1,0 +1,117 @@
+﻿@page "/board/{boardName}"
+@page "/boards/{boardName}"
+
+@using Humanizer
+@using Microsoft.EntityFrameworkCore
+@using YottySuba.Components.Services
+@using YottySuba.Components.Shared
+@using YottySuba.Database.Services
+
+@inject AttachmentUploadService AttachmentUploadService
+@inject BoardService BoardService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+@inject PostFilterService PostFilterService
+
+
+<PageTitle>/@BoardName/ - @_board?.Description</PageTitle>
+
+<MudGrid Justify="Justify.Center">
+    <MudItem xs="12">
+        <MudText Align="Align.Center" Typo="Typo.h3">/@BoardName/</MudText>
+    </MudItem>
+    <MudItem xs="8">
+        <CreateOrReplyForm Board="@_board" OnSuccess="CreateNewThread" Mode="CreateOrReplyForm.FormMode.CreateThread"/>
+    </MudItem>
+    <MudDivider/>
+    <MudItem xs="12" Style="height: 50px;">&nbsp;</MudItem>
+    @foreach (var thread in _posts)
+    {
+        <MudItem xs="12">
+            <MudPaper id="@thread.Id" Tag="@thread">
+                <MudToolBar Dense="true">
+                    <MudText Align="Align.Left" Class="mr-1" Typo="Typo.subtitle1"><b>@thread.Subject</b></MudText>
+                    <MudText Align="Align.Left"> - </MudText>
+                    <MudText Align="Align.Left" Class="ml-1" Typo="Typo.subtitle2">@thread.Name</MudText>
+                    <MudText Align="Align.Left">
+                        <MudLink Href="@thread.GetBoardAnchorUrl(BoardName)">#@thread.Id</MudLink>
+                    </MudText>
+                    <MudSpacer/>
+                    <MudText Align="Align.Right" Class="mr-2">
+                        <MudTooltip Text="@thread.Created.ToLongDateString()">
+                            @thread.Created.Humanize()
+                        </MudTooltip>
+                    </MudText>
+                    <MudText Align="Align.Right">[<MudLink Href="@thread.ThreadUrl">Reply</MudLink>]</MudText>
+                </MudToolBar>
+                <MudStack Row="true">
+                    <MudItem xs="3" Class="px-2">
+                        @if (_attachments.TryGetValue(thread.Id, out var attachment))
+                        {
+                            <AttachmentRenderer Attachment=@attachment Post=thread />
+                        }
+                    </MudItem>
+                    <MudItem xs="9" Class="px-2">
+                            @thread.MessageHtml    
+                    </MudItem>    
+                </MudStack>
+                
+            </MudPaper>
+        </MudItem>
+    }
+</MudGrid>
+
+
+
+@code {
+
+    [Parameter] public string BoardName { get; set; } = "";
+    
+    private Database.Board _board = null!;
+    private List<Post> _posts = [];
+    private Dictionary<long, Attachment> _attachments = [];
+    
+    protected override async Task OnInitializedAsync()
+    {
+        _board = await BoardService.Context.Boards.FirstAsync(b => b.Code.Equals(BoardName));
+        _posts = await BoardService.Context.Posts
+            .Where(post => post.IsStart)
+            .OrderByDescending(post => post.LastUpdated)
+            .ToListAsync();
+        _attachments = (await BoardService.Context.Attachments
+            .Where(a => _posts.Select(fp => fp.File).Contains(a.Id))
+            .ToListAsync())
+            .ToDictionary(a => _posts.First(f => f.File == a.Id).Id, a => a);
+        await InvokeAsync(StateHasChanged);
+        await base.OnInitializedAsync();
+    }
+
+    private async Task CreateNewThread(CreateOrReplyForm.FormData postData, IList<IBrowserFile> attachments)
+    {
+        var attachmentIds = new List<Guid>();
+        
+        foreach (var attachment in attachments)
+        {
+            attachmentIds.Add(await AttachmentUploadService.UploadAttachment(_board, attachment));
+        }
+        var post = await BoardService.Context.Posts.AddAsync(new Post
+        {
+            Name = postData.Name,
+            Created = DateTime.UtcNow,
+            File = attachmentIds.FirstOrDefault(),
+            Subject = postData.Subject,
+            Message = postData.Message,
+            Board = _board.Id,
+            DeletePassword = [],
+            IpV4 = [],
+            IpV6 = [],
+            IsStart = true,
+            LastUpdated = DateTime.UtcNow
+        });
+        await PostFilterService.ApplyFiltersToPost(post.Entity);
+        await BoardService.Context.SaveChangesAsync();
+        Snackbar.Add($"Post #{post.Entity.Id} created successfully!");
+        Navigation.NavigateTo(post.Entity.ThreadUrl);
+    }
+
+}

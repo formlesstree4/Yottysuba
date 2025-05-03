@@ -398,3 +398,12 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+
+# Custom stuff
+bin/
+obj/
+/packages/
+riderModule.iml
+/_ReSharper.Caches/
+wwwroot/is-cache/
+.idea/

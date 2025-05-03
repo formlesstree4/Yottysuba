@@ -1,0 +1,116 @@
+﻿@using System.ComponentModel.DataAnnotations
+@using Humanizer
+
+<MudOverlay @bind-Visible="_visible" DarkBackground>
+    <MudProgressCircular Color="Color.Default" Indeterminate="true" />
+</MudOverlay>
+
+<EditForm Model="@_model" OnValidSubmit="OnValidSubmit">
+    <DataAnnotationsValidator/>
+    <MudGrid Justify="Justify.Center">
+        <MudItem xs="12" sm="7">
+            <MudCard>
+                <MudCardContent>
+                    <MudTextField T="string" Label="Name" @bind-Value="_model.Name" For="@(() => _model.Name)"/>
+                    <MudTextField T="string" Label="Email" Class="mt-3" @bind-Value="_model.Email" For="@(() => _model.Email)"/>
+                    <MudTextField T="string" Label="Subject" Class="mt-3" @bind-Value="_model.Subject" For="@(() => _model.Subject)"/>
+                    <MudTextField T="string" Lines="6" Label="Message" Class="mt-3" @bind-Value="_model.Message" For="@(() => _model.Message)"/>
+                    <MudList T="string">
+                        @foreach (var file in _files)
+                        {
+                            <MudListItem Icon="@Icons.Material.Filled.AttachFile">
+                                @file.Name <code>@file.Size.Bytes().Humanize()</code>
+                            </MudListItem>
+                        }
+                    </MudList>
+                </MudCardContent>
+                <MudCardActions>
+                    <MudFileUpload Class="mr-1" T="IBrowserFile" FilesChanged="UploadFiles">
+                        <ActivatorContent>
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Primary"
+                                       StartIcon="@Icons.Material.Filled.CloudUpload">
+                                Upload File
+                            </MudButton>
+                        </ActivatorContent>
+                    </MudFileUpload>
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Clear"
+                               OnClick="@ClearFiles">
+                        Clear File
+                    </MudButton>
+                    <MudText Class="ml-2" Typo="Typo.subtitle2">(max size: @((Board?.MaxFilesizeInBytesOrDefault ?? 0).Bytes().Humanize()))</MudText>
+                    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="ml-auto">@GetPostButtonValue()</MudButton>
+                </MudCardActions>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+</EditForm>
+
+@code {
+
+    [Parameter]
+    public FormMode Mode { get; set; } = FormMode.CreateThread;
+    
+    [Parameter]
+    public Func<FormData, IList<IBrowserFile>, Task>? OnSuccess { get; set; }
+
+    [Parameter]
+    public Board Board { get; set; } = null!;
+    
+    private readonly FormData _model = new();
+    private readonly IList<IBrowserFile> _files = new List<IBrowserFile>();
+    private bool _visible;
+
+
+    public sealed class FormData
+    {
+        public string Name { get; set; } = "";
+        public string Email { get; set; } = "";
+        public string Subject { get; set; } = "";
+
+        [Required]
+        public string Message { get; set; } = "";
+    }
+
+    public enum FormMode
+    {
+        CreateThread,
+        PostInThread
+    }
+    
+    private void UploadFiles(IBrowserFile? file)
+    {
+        _files.Clear();
+        if (file is null) return;
+        _files.Add(file);
+    }
+    
+    private async Task OnValidSubmit(EditContext context)
+    {
+        _visible = true;
+        StateHasChanged();
+        try
+        {
+            var task = OnSuccess?.Invoke(_model, _files);
+            if (task is not null) await task;
+        }
+        finally
+        {
+            _visible = false;
+        }
+        StateHasChanged();
+    }
+
+    private void ClearFiles() => _files.Clear();
+
+    private string GetPostButtonValue() =>
+        Mode switch
+        {
+            FormMode.CreateThread => "Create",
+            FormMode.PostInThread => "Post",
+            _ => throw new ArgumentOutOfRangeException()
+        };
+
+}

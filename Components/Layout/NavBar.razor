@@ -1,0 +1,41 @@
+﻿@using Microsoft.EntityFrameworkCore
+@using YottySuba.Database.Services
+
+@inject NavigationManager Navigation
+@inject NavBarService NavBarService;
+
+<MudList T="Board">
+    <!-- Iterate the keys first -->
+    @foreach (var groupId in _boards.Keys)
+    {
+        @foreach (var board in _boards[groupId])
+        {
+            <MudListItem OnClick="() => NavigateToBoard(board)" Value="@board" Text="@GenerateBoardText(board)" SecondaryText="@board.Description" />
+        }
+        <MudDivider/>
+    }
+</MudList>
+
+@code {
+
+    // private readonly List<Board> _boards = [];
+    private Dictionary<int, List<Board>> _boards = new();
+
+    private static string GenerateBoardText(Board board) => $"/{board.Code}/";
+    
+    protected override async Task OnInitializedAsync()
+    {
+        var groups = await NavBarService.Context.Groups.ToListAsync();
+        var boards = await NavBarService.Context.Boards.ToListAsync();
+        var data = groups.ToDictionary(
+            keySelector => keySelector.Id,
+            elementSelector => elementSelector
+                .Boards.Select(boardId => boards.First(b => b.Id == boardId)).ToList());
+        _boards = data;
+        await InvokeAsync(StateHasChanged);
+        await base.OnInitializedAsync();
+    }
+
+    private void NavigateToBoard(Board board) => Navigation.NavigateTo($"/boards/{board.Code}");
+
+}

@@ -1,0 +1,29 @@
+﻿@inject IJSRuntime Js
+
+<div class="d-flex flex-wrap gap-2 justify-content-end mb-3">
+    <button class="btn btn-outline-secondary btn-sm" @onclick="() => SetTheme(ThemeName.Yotsuba)">Yotsuba</button>
+    <button class="btn btn-outline-secondary btn-sm" @onclick="() => SetTheme(ThemeName.Dark)">Dark Mode</button>
+</div>
+
+@code {
+
+    private enum ThemeName
+    {
+        Yotsuba,
+        Dark
+    }
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var theme = await Js.InvokeAsync<string>("getSavedTheme");
+            await Js.InvokeVoidAsync("setTheme", theme);
+        }
+    }
+
+    private async Task SetTheme(ThemeName theme)
+    {
+        await Js.InvokeVoidAsync("setTheme", theme.ToString());
+    }
+}

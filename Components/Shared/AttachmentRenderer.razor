@@ -1,0 +1,75 @@
+﻿@using Humanizer
+@using YottySuba.Components.Services
+
+@inject ImageProcessingService ImageProcessingService;
+@inject VideoProcessingService VideoProcessingService;
+
+@if (Attachment is not null)
+{
+    <MudStack AlignItems="AlignItems.Center">
+        @if (_type == AttachmentType.Image)
+        {
+            <MudLink Href="@Attachment.Location" Target="_blank">
+                <MudImage Src="@Attachment.Thumbnail"/>
+            </MudLink>   
+        }
+
+        @if (_type == AttachmentType.Video)
+        {
+            <video width="320" height="240" controls>
+                <source src="@Attachment.Location" type="video/webm">
+                Your browser does not support the video tag.
+            </video>
+        }
+        <MudButton
+            Href="@Attachment.Location"
+            StartIcon="@Icons.Material.Outlined.Save"
+            Target="_blank">
+            Save - @Attachment.Size.Bytes().Humanize()
+        </MudButton>
+    </MudStack>
+}
+
+
+
+@code {
+
+    [Parameter] public Post Post { get; set; } = null!;
+    [Parameter] public Attachment? Attachment { get; set; }
+
+    private AttachmentType _type = AttachmentType.Other;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _type = await DetermineAttachmentType();
+        await base.OnInitializedAsync();
+    }
+
+
+    private async Task<AttachmentType> DetermineAttachmentType()
+    {
+        if (Attachment is null) return AttachmentType.None;
+        if (await ImageProcessingService.IsFileProbablyAnImage(Attachment.Location))
+        {
+            return AttachmentType.Image;
+        }
+
+        if (await VideoProcessingService.IsFileProbablyVideo(Attachment.Location))
+        {
+            return AttachmentType.Video;
+        }
+
+        return AttachmentType.Other;
+    }
+
+    
+    private enum AttachmentType
+    {
+        Image,
+        Video,
+        Other,
+        None
+    }
+    
+    
+}
