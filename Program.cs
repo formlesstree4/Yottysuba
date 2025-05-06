@@ -51,7 +51,6 @@ builder.Services.AddScoped<NavBarService>();
 builder.Services.AddScoped<ThreadService>();
 builder.Services.AddScoped<PostFilterService>();
 builder.Services.AddScoped<ApplicationContextService>();
-builder.Services.AddScoped<AuthenticationService>();
 
 builder.Services
     .AddAuthentication()
