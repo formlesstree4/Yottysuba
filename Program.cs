@@ -42,6 +42,7 @@ builder.Services.AddImageSharp()
         options.ProviderRootPath = rootDirectory;
     });
 
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<AttachmentUploadService>(provider => new AttachmentUploadService(rootDirectory, provider.GetRequiredService<YottysubaContext>()));
 builder.Services.AddTransient<ImageProcessingService>(_ => new ImageProcessingService(rootDirectory));
 builder.Services.AddTransient<VideoProcessingService>(_ => new VideoProcessingService(rootDirectory));
@@ -49,6 +50,8 @@ builder.Services.AddScoped<BoardService>();
 builder.Services.AddScoped<NavBarService>();
 builder.Services.AddScoped<ThreadService>();
 builder.Services.AddScoped<PostFilterService>();
+builder.Services.AddScoped<ApplicationContextService>();
+builder.Services.AddScoped<AuthenticationService>();
 
 builder.Services
     .AddAuthentication()
@@ -67,7 +70,6 @@ app.UseHttpsRedirection();
 app.UseImageSharp();
 app.UseStaticFiles();
 app.UseAntiforgery();
-
 
 app
     .MapRazorComponents<App>()
