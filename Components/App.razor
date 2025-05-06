@@ -1,4 +1,7 @@
-﻿<!DOCTYPE html>
+﻿@using YottySuba.Components.Services
+@inject IHttpContextAccessor ContextAccessor;
+
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -24,3 +27,10 @@
 </body>
 
 </html>
+
+@code {
+
+    [Inject]
+    ApplicationContextService? AppContext { get; set; }
+
+}
