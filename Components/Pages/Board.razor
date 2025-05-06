@@ -1,12 +1,14 @@
 ﻿@page "/board/{boardName}"
 @page "/boards/{boardName}"
 
+@using System.Net
 @using Humanizer
 @using Microsoft.EntityFrameworkCore
 @using YottySuba.Components.Services
 @using YottySuba.Components.Shared
 @using YottySuba.Database.Services
 
+@inject ApplicationContextService ApplicationContextService
 @inject AttachmentUploadService AttachmentUploadService
 @inject BoardService BoardService
 @inject ISnackbar Snackbar
@@ -90,6 +92,13 @@
     private async Task CreateNewThread(CreateOrReplyForm.FormData postData, IList<IBrowserFile> attachments)
     {
         var attachmentIds = new List<Guid>();
+        var posterIpAddress = IPAddress.Parse(ApplicationContextService.ClientIpAddress);
+        var ban = ApplicationContextService.GetBan(posterIpAddress); 
+        if (ban is not null)
+        {
+            Snackbar.Add($"Banned: {ban.Reason}");
+            return;
+        }
         
         foreach (var attachment in attachments)
         {
@@ -104,7 +113,7 @@
             Message = postData.Message,
             Board = _board.Id,
             DeletePassword = [],
-            IpV4 = [],
+            IpV4 = posterIpAddress.GetAddressBytes(),
             IpV6 = [],
             IsStart = true,
             LastUpdated = DateTime.UtcNow
